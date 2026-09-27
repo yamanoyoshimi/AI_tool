@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>法人営業の生成AI活用度診断</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=BIZ+UDPMincho:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ai: #22385C;        /* 藍：見出し・主要操作 */
+    --paper: #F7F8FA;     /* 用紙 */
+    --rule: #C9D1DC;      /* 罫線 */
+    --shu: #B8322A;       /* 朱：判子のみ */
+    --ink: #1D2733;       /* 本文 */
+    --mist: #E4EAF2;      /* 選択・面 */
+    --mincho: "BIZ UDPMincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    --gothic: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: #DDE3EB;
+    color: var(--ink);
+    font-family: var(--gothic);
+    font-size: 16px;
+    line-height: 1.75;
+  }
+  .sheet {
+    max-width: 680px;
+    margin: 32px auto;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 40px 44px 48px;
+    min-height: 560px;
+    position: relative;
+  }
+  @media (max-width: 720px) {
+    .sheet { margin: 0; border: 0; padding: 28px 20px 40px; min-height: 100vh; }
+  }
+  h1, h2, h3 { font-family: var(--mincho); font-weight: 700; color: var(--ai); margin: 0; }
+  h1 { font-size: 30px; line-height: 1.35; letter-spacing: 0.02em; }
+  h2 { font-size: 22px; line-height: 1.5; }
+  h3 { font-size: 17px; line-height: 1.5; }
+  p { margin: 0 0 1em; }
+  .form-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 2px solid var(--ai); padding-bottom: 10px; margin-bottom: 28px;
+    font-size: 13px; color: #56657A;
+  }
+  .form-head strong { font-family: var(--mincho); color: var(--ai); font-size: 15px; }
+  .lead { font-size: 16px; max-width: 34em; }
+  .facts { margin: 28px 0 32px; border-top: 1px solid var(--rule); }
+  .facts div { display: flex; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
+  .facts dt, .facts span.k { width: 6em; flex-shrink: 0; color: #56657A; }
+  button { font-family: var(--gothic); cursor: pointer; }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #5B8BD0; outline-offset: 2px; }
+  .primary {
+    background: var(--ai); color: #fff; border: 0; padding: 14px 28px;
+    font-size: 16px; font-weight: 700; border-radius: 2px;
+  }
+  .primary:hover { background: #172A47; }
+  .ghost {
+    background: none; border: 0; color: var(--ai); padding: 8px 0; font-size: 14px;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .ghost[disabled] { visibility: hidden; }
+
+  /* 設問 */
+  .progress { display: flex; gap: 4px; margin-bottom: 28px; }
+  .progress i { flex: 1; height: 4px; background: var(--rule); }
+  .progress i.done { background: var(--ai); }
+  .qno { font-family: var(--mincho); font-size: 15px; color: #56657A; margin-bottom: 6px; }
+  .qarea { font-size: 13px; color: #56657A; margin-left: 10px; }
+  .options { list-style: none; padding: 0; margin: 24px 0 20px; border-top: 1px solid var(--rule); }
+  .options li { border-bottom: 1px solid var(--rule); }
+  .options button {
+    width: 100%; text-align: left; background: none; border: 0;
+    padding: 16px 12px 16px 44px; font-size: 16px; color: var(--ink); position: relative; line-height: 1.6;
+  }
+  .options button::before {
+    content: ""; position: absolute; left: 12px; top: 20px;
+    width: 16px; height: 16px; border: 1.5px solid #7D8A9C; border-radius: 50%;
+  }
+  .options button:hover { background: var(--mist); }
+  .options button[aria-pressed="true"] { background: var(--mist); }
+  .options button[aria-pressed="true"]::before { border-color: var(--ai); background: radial-gradient(circle, var(--ai) 0 4px, transparent 5px); }
+
+  /* 時間入力 */
+  .hours { margin: 28px 0; }
+  .hours output { font-family: var(--mincho); font-size: 44px; color: var(--ai); font-weight: 700; }
+  .hours output small { font-size: 18px; margin-left: 4px; }
+  input[type=range] { width: 100%; accent-color: var(--ai); margin: 12px 0 4px; }
+  .scale { display: flex; justify-content: space-between; font-size: 13px; color: #56657A; }
+
+  /* 結果 */
+  .result-top { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; }
+  .type-name { font-family: var(--mincho); font-size: 32px; font-weight: 700; color: var(--ai); line-height: 1.3; margin: 4px 0 12px; }
+  .stamp {
+    width: 104px; height: 104px; border: 4px solid var(--shu); border-radius: 50%;
+    color: var(--shu); font-family: var(--mincho); font-weight: 700;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 30px; line-height: 1.05; writing-mode: horizontal-tb;
+    transform: rotate(-8deg); opacity: 0.92; margin-top: 4px;
+    box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--shu);
+  }
+  .stamp span { display: block; }
+  .stamp.pressed { animation: press 520ms cubic-bezier(.2,.9,.3,1.2) 250ms both; }
+  @keyframes press {
+    0% { transform: rotate(-8deg) scale(1.9); opacity: 0; }
+    60% { transform: rotate(-8deg) scale(0.94); opacity: 0.95; }
+    100% { transform: rotate(-8deg) scale(1); opacity: 0.92; }
+  }
+  @media (prefers-reduced-motion: reduce) { .stamp.pressed { animation: none; } }
+  @media (max-width: 480px) {
+    .type-name { font-size: 26px; }
+    .stamp { width: 84px; height: 84px; font-size: 24px; }
+  }
+  .section { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--rule); }
+  .chart-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: center; margin-top: 12px; }
+  @media (max-width: 560px) { .chart-wrap { grid-template-columns: 1fr; } .chart-wrap svg { max-width: 280px; margin: 0 auto; display: block; } }
+  .scores { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .scores td { padding: 7px 0; border-bottom: 1px solid var(--rule); }
+  .scores td.v { text-align: right; font-family: var(--mincho); font-weight: 700; color: var(--ai); width: 4em; }
+  .scores tr.weak td { color: var(--shu); }
+  .scores tr.weak td.v { color: var(--shu); }
+  .saving { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 8px 0 6px; }
+  .saving b { font-family: var(--mincho); font-size: 48px; color: var(--ai); line-height: 1.1; }
+  .saving span { font-size: 16px; }
+  .note { font-size: 13px; color: #56657A; line-height: 1.7; }
+  .rec { margin: 12px 0 0; padding: 0; list-style: none; }
+  .rec li { padding: 10px 0 10px 16px; border-left: 3px solid var(--ai); margin-bottom: 10px; background: var(--mist); padding-right: 12px; }
+  .rec li b { display: block; color: var(--ai); }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
+  .actions a.primary { text-decoration: none; display: inline-block; }
+  .secondary {
+    background: none; border: 1.5px solid var(--ai); color: var(--ai);
+    padding: 12px 22px; font-size: 15px; font-weight: 700; border-radius: 2px;
+  }
+  .footer-note { margin-top: 36px; font-size: 12px; color: #7D8A9C; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="sheet" id="app" aria-live="polite"></main>
+
+<script>
+  // ▼ 公開時にプロンプト集の販売ページURLへ差し替えてください
+  const PROMPT_URL = "#";
+
+  const AREAS = [
+    { key: "A", name: "顧客理解・事前調査", chapter: "第1章", picks: ["1-1 公開情報から経営課題の仮説を立てる", "1-4 初回訪問用の仮説シートを作る"] },
+    { key: "B", name: "ヒアリング・課題整理", chapter: "第2章", picks: ["2-1 ヒアリング項目リストを作る", "2-3 ヒアリングメモを構造化する"] },
+    { key: "C", name: "提案書・資料作成", chapter: "第3章", picks: ["3-1 提案書のストーリーラインを作る", "3-6 決裁者の目線で提案書をセルフレビューする"] },
+    { key: "D", name: "メール・議事録", chapter: "第4章", picks: ["4-2 商談後のお礼とネクストアクションのメール", "4-3 議事録を作る"] },
+    { key: "E", name: "振り返り・ナレッジ化", chapter: "第5章", picks: ["5-1 失注の原因を分析する", "5-5 よくある質問集を作る"] },
+  ];
+
+  const QUESTIONS = [
+    { area: "A", q: "初回訪問の前、顧客の公開情報（IR資料や中期経営計画など）をどう使っていますか？",
+      o: ["ほとんど見ずに訪問している", "時間があればざっと目を通す", "読み込んで、自分で課題の仮説を立てている", "AIで要約し、課題の仮説出しまでしてから訪問している"] },
+    { area: "A", q: "普段あまり担当しない業界の顧客に会うとき、どう準備しますか？",
+      o: ["準備できないまま行くことが多い", "ネット検索で1時間以上かけて調べる", "調べ物の一部でAIに質問することがある", "AIで業界動向と質問案をまとめてから行く"] },
+    { area: "B", q: "ヒアリング項目はどう準備していますか？",
+      o: ["その場の流れで聞いている", "毎回、自分で考えて書き出す", "自分用のチェックリストを使っている", "案件に合わせてAIで項目を作り、自分で絞り込んでいる"] },
+    { area: "B", q: "商談中にとったメモは、その後どうなりますか？",
+      o: ["取るが、ほとんど見返さない", "手作業で清書している", "決まった型に書き写して整理している", "AIで構造化し、未確認事項まで洗い出している"] },
+    { area: "C", q: "提案書を作るとき、最初にすることは？",
+      o: ["過去資料をコピーしてスライドを直し始める", "スライドを作りながら構成を考える", "構成をメモで決めてからスライドを作る", "AIと構成を壁打ちしてからスライドを作る"] },
+    { area: "C", q: "提案書を提出する前のチェックは？",
+      o: ["特にしていない", "自分で読み返す", "上長や同僚に見てもらう", "AIに決裁者役でレビューさせ、人にも見てもらう"] },
+    { area: "D", q: "お礼メールや日程調整のメールは、どう書いていますか？",
+      o: ["毎回ゼロから書いている", "過去のメールを探して流用している", "自分用のテンプレートがある", "AIで下書きし、手直しして送っている"] },
+    { area: "D", q: "議事録の作成はどうしていますか？",
+      o: ["作らない、または後回しになりがち", "会議後に手作業で30分以上かけている", "型を決めて手早く作っている", "文字起こしとAIで作り、確認と修正だけしている"] },
+    { area: "E", q: "案件を失注したあと、何をしますか？",
+      o: ["特に振り返らない", "頭の中で反省する", "上長と話したり、記録を残したりする", "経緯を整理し、AIも使って原因と次の打ち手を言語化する"] },
+    { area: "E", q: "よく聞かれる質問や、繰り返し使う提案パターンはどう扱っていますか？",
+      o: ["毎回その場で対応している", "自分の記憶に頼っている", "メモやファイルにためている", "FAQやテンプレートに整えて使い回している"] },
+  ];
+
+  const TYPES = [
+    { max: 0.3, name: "手作業職人タイプ", seal: ["職", "人"],
+      text: "一つひとつを自分の手で丁寧に仕上げる働き方です。その丁寧さは強みですが、下書きや整理にかかる時間が大きく、AIに任せたときの効果がいちばん出やすい段階にいます。まずはメールと議事録のような定型作業から試すのがおすすめです。" },
+    { max: 0.55, name: "ときどき活用タイプ", seal: ["試", "行"],
+      text: "AIを使う場面はあるものの、思いついたときの単発利用にとどまっている状態です。よく使う依頼を「型」として手元に置いておくと、毎回の指示を考える手間が減り、出力の質も安定します。" },
+    { max: 0.8, name: "型づくり途上タイプ", seal: ["型", "化"],
+      text: "多くの業務でAIや自分なりの型を使いこなしています。次の伸びしろは、弱い領域を埋めることと、事前調査から提案、振り返りまでをつなげて使うことです。一連の流れで使うと、背景説明の手間がさらに減ります。" },
+    { max: 1.01, name: "AI参謀タイプ", seal: ["参", "謀"],
+      text: "AIを考える相手として使いこなし、判断と顧客対応に時間を集中できている状態です。自分の型をチームに広げたり、後輩向けの教材に落とし込んだりすると、組織全体の生産性に効いてきます。" },
+  ];
+
+  const state = { step: "intro", i: 0, answers: Array(QUESTIONS.length).fill(null), hours: 12 };
+  const app = document.getElementById("app");
+
+  function head(right) {
+    return `<div class="form-head"><strong>法人営業の生成AI活用度診断</strong><span>${right}</span></div>`;
+  }
+
+  function render() {
+    if (state.step === "intro") return renderIntro();
+    if (state.step === "q") return renderQuestion();
+    if (state.step === "hours") return renderHours();
+    return renderResult();
+  }
+
+  function renderIntro() {
+    app.innerHTML = `
+      ${head("所要時間 約2分")}
+      <h1>あなたの営業仕事、<br>AIに任せられる時間は<br>どれくらいありますか。</h1>
+      <p class="lead" style="margin-top:20px">10問に答えると、生成AIの活用度を5つの業務領域ごとに診断し、1か月あたりに削減できそうな時間の目安を出します。</p>
+      <dl class="facts">
+        <div><dt>対象</dt><dd style="margin:0">法人営業、プリセールス、営業企画の方</dd></div>
+        <div><dt>設問</dt><dd style="margin:0">10問（選択式）と、業務時間の入力</dd></div>
+        <div><dt>わかること</dt><dd style="margin:0">活用タイプ、領域別の得点、削減できそうな時間、次に試すとよいこと</dd></div>
+      </dl>
+      <button class="primary" id="start">診断を始める</button>
+      <p class="footer-note">入力内容はこのページの中だけで計算され、どこにも送信・保存されません。</p>`;
+    document.getElementById("start").onclick = () => { state.step = "q"; state.i = 0; render(); focusTop(); };
+  }
+
+  function renderQuestion() {
+    const q = QUESTIONS[state.i];
+    const area = AREAS.find(a => a.key === q.area);
+    const bars = QUESTIONS.map((_, k) => `<i class="${k < state.i || state.answers[k] !== null && k === state.i ? "done" : ""}"></i>`).join("");
+    app.innerHTML = `
+      ${head(`${state.i + 1} / ${QUESTIONS.length}`)}
+      <div class="progress" aria-hidden="true">${bars}</div>
+      <div class="qno">問${state.i + 1}<span class="qarea">${area.name}</span></div>
+      <h2 id="qtext">${q.q}</h2>
+      <ul class="options" role="group" aria-labelledby="qtext">
+        ${q.o.map((t, k) => `<li><button type="button" data-v="${k}" aria-pressed="${state.answers[state.i] === k}">${t}</button></li>`).join("")}
+      </ul>
+      <button class="ghost" id="back" ${state.i === 0 ? "disabled" : ""}>前の設問に戻る</button>`;
+    app.querySelectorAll(".options button").forEach(b => {
+      b.onclick = () => {
+        state.answers[state.i] = Number(b.dataset.v);
+        if (state.i < QUESTIONS.length - 1) state.i++; else state.step = "hours";
+        render(); focusTop();
+      };
+    });
+    document.getElementById("back").onclick = () => { state.i--; render(); focusTop(); };
+  }
+
+  function renderHours() {
+    app.innerHTML = `
+      ${head("最後の質問")}
+      <div class="progress" aria-hidden="true">${QUESTIONS.map(() => `<i class="done"></i>`).join("")}</div>
+      <h2 id="hlabel">資料作成、メール、調べ物、議事録にかけている時間は、1週間で合計何時間くらいですか？</h2>
+      <p class="note" style="margin-top:8px">だいたいで構いません。削減できそうな時間の計算に使います。</p>
+      <div class="hours">
+        <output id="hv">${state.hours}<small>時間 / 週</small></output>
+        <input type="range" id="hr" min="2" max="30" step="1" value="${state.hours}" aria-labelledby="hlabel">
+        <div class="scale"><span>2時間</span><span>30時間</span></div>
+      </div>
+      <div class="actions" style="margin-top:8px">
+        <button class="primary" id="go">結果を見る</button>
+        <button class="ghost" id="back">前の設問に戻る</button>
+      </div>`;
+    const hr = document.getElementById("hr"), hv = document.getElementById("hv");
+    hr.oninput = () => { state.hours = Number(hr.value); hv.innerHTML = `${state.hours}<small>時間 / 週</small>`; };
+    document.getElementById("go").onclick = () => { state.step = "result"; render(); focusTop(); };
+    document.getElementById("back").onclick = () => { state.step = "q"; state.i = QUESTIONS.length - 1; render(); focusTop(); };
+  }
+
+  function compute() {
+    const areaScores = AREAS.map(a => {
+      const s = QUESTIONS.reduce((sum, q, k) => q.area === a.key ? sum + state.answers[k] : sum, 0);
+      return { ...a, score: s };
+    });
+    const total = areaScores.reduce((s, a) => s + a.score, 0);
+    const pct = total / (QUESTIONS.length * 3);
+    const type = TYPES.find(t => pct < t.max);
+    const weak = areaScores.reduce((m, a) => a.score < m.score ? a : m, areaScores[0]);
+    // 削減率の目安：活用度が低いほど伸びしろが大きい（15%〜40%）
+    const rate = 0.15 + 0.25 * (1 - pct);
+    const monthly = Math.round(state.hours * 4.3 * rate * 2) / 2;
+    return { areaScores, total, pct, type, weak, rate, monthly };
+  }
+
+  function radar(areaScores) {
+    const size = 260, c = size / 2, r = 92, n = areaScores.length, max = 6;
+    const pt = (k, v) => {
+      const ang = -Math.PI / 2 + (2 * Math.PI * k) / n;
+      return [c + Math.cos(ang) * r * v, c + Math.sin(ang) * r * v];
+    };
+    let grid = "";
+    [1, 2, 3].forEach(l => {
+      const pts = areaScores.map((_, k) => pt(k, l / 3).join(",")).join(" ");
+      grid += `<polygon points="${pts}" fill="none" stroke="#C9D1DC" stroke-width="1"/>`;
+    });
+    areaScores.forEach((_, k) => {
+      const [x, y] = pt(k, 1);
+      grid += `<line x1="${c}" y1="${c}" x2="${x}" y2="${y}" stroke="#C9D1DC" stroke-width="1"/>`;
+    });
+    const shape = areaScores.map((a, k) => pt(k, Math.max(a.score, 0.15) / max).join(",")).join(" ");
+    const labels = areaScores.map((a, k) => {
+      const [x, y] = pt(k, 1.2);
+      const anchor = Math.abs(x - c) < 4 ? "middle" : x > c ? "start" : "end";
+      const short = a.name.split("・")[0];
+      return `<text x="${x}" y="${y + 4}" text-anchor="${anchor}" font-size="11" fill="#56657A" font-family="BIZ UDPGothic, sans-serif">${short}</text>`;
+    }).join("");
+    return `<svg viewBox="-30 -10 ${size + 60} ${size + 20}" width="100%" role="img" aria-label="領域別の得点を示すレーダーチャート">
+      ${grid}
+      <polygon points="${shape}" fill="rgba(34,56,92,0.18)" stroke="#22385C" stroke-width="2"/>
+      ${labels}
+    </svg>`;
+  }
+
+  function renderResult() {
+    const r = compute();
+    const rows = r.areaScores.map(a =>
+      `<tr class="${a.key === r.weak.key ? "weak" : ""}"><td>${a.name}${a.key === r.weak.key ? "（伸びしろ最大）" : ""}</td><td class="v">${a.score} / 6</td></tr>`).join("");
+    app.innerHTML = `
+      ${head("診断結果")}
+      <div class="result-top">
+        <div>
+          <div class="qno">あなたは</div>
+          <div class="type-name">${r.type.name}</div>
+          <p class="note">総合 ${r.total} / 30 点</p>
+        </div>
+        <div class="stamp pressed" aria-hidden="true"><span>${r.type.seal[0]}</span><span>${r.type.seal[1]}</span></div>
+      </div>
+      <p>${r.type.text}</p>
+
+      <div class="section">
+        <h3>領域ごとの活用度</h3>
+        <div class="chart-wrap">
+          ${radar(r.areaScores)}
+          <table class="scores"><tbody>${rows}</tbody></table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>削減できそうな時間の目安</h3>
+        <div class="saving"><span>1か月あたり</span><b>約${r.monthly}時間</b></div>
+        <p class="note">週${state.hours}時間の対象業務に対して、現在の活用度から見込める削減率（約${Math.round(r.rate * 100)}%）を掛けた目安です。業務内容や社内ルールによって実際の値は変わります。</p>
+      </div>
+
+      <div class="section">
+        <h3>次に試すとよいこと：${r.weak.name}</h3>
+        <p>いちばん伸びしろが大きいのは「${r.weak.name}」です。まずはこの2つのプロンプトから試してみてください。</p>
+        <ul class="rec">
+          ${r.weak.picks.map(p => `<li><b>${p}</b>プロンプト集 ${r.weak.chapter}に収録</li>`).join("")}
+        </ul>
+      </div>
+
+      <div class="actions">
+        <a class="primary" href="${PROMPT_URL}" target="_blank" rel="noopener">プロンプト集30本を見る</a>
+        <button class="secondary" id="share">結果をXでシェア</button>
+        <button class="ghost" id="retry">もう一度診断する</button>
+      </div>
+      <p class="footer-note">この診断は自己申告にもとづく簡易的な目安です。入力内容はどこにも送信・保存されません。</p>`;
+
+    document.getElementById("share").onclick = () => {
+      const text = `法人営業の生成AI活用度診断をやってみたら「${r.type.name}」でした。伸びしろは「${r.weak.name}」、削減できそうな時間は月${r.monthly}時間。`;
+      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`;
+      window.open(url, "_blank", "noopener");
+    };
+    document.getElementById("retry").onclick = () => {
+      state.answers = Array(QUESTIONS.length).fill(null); state.i = 0; state.step = "intro"; render(); focusTop();
+    };
+  }
+
+  function focusTop() {
+    window.scrollTo({ top: 0 });
+    const h = app.querySelector("h1, h2, .type-name");
+    if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); h.style.outline = "none"; }
+  }
+
+  render();
+</script>
+</body>
+</html>
